@@ -1,0 +1,1642 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>LensaRetro Studio — Kamera Analog & Editor Foto</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&family=VT323&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    :root {
+      --bg-body: #111113;
+      --bg-panel: #1a1a1e;
+      --accent-amber: #f59e0b;
+      --accent-red: #ef4444;
+    }
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-body);
+      color: #f4f4f5;
+      overflow-x: hidden;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .font-mono-tech {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .font-digital {
+      font-family: 'VT323', monospace;
+    }
+    .font-handwriting {
+      font-family: 'Caveat', cursive;
+    }
+
+    /* Custom Scrollbar untuk daftar filter */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    /* Custom Range Slider bergaya Analog Dial */
+    input[type="range"].retro-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      background: transparent;
+      cursor: pointer;
+    }
+    input[type="range"].retro-slider::-webkit-slider-runnable-track {
+      height: 6px;
+      border-radius: 999px;
+      background: #2e2e34;
+      border: 1px solid #3f3f46;
+    }
+    input[type="range"].retro-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #f59e0b;
+      border: 2px solid #18181b;
+      margin-top: -7px;
+      box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
+      transition: transform 0.15s ease;
+    }
+    input[type="range"].retro-slider::-webkit-slider-thumb:active {
+      transform: scale(1.2);
+    }
+
+    /* Efek Flash Layar */
+    @keyframes flashAnim {
+      0% { opacity: 0.95; }
+      100% { opacity: 0; }
+    }
+    .flash-active {
+      animation: flashAnim 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    /* Tekstur bodi kamera halus */
+    .camera-leather {
+      background-color: #161619;
+      background-image: radial-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 0);
+      background-size: 12px 12px;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-amber-500 selection:text-black">
+
+  <!-- Flash Overlay -->
+  <div id="flashOverlay" class="fixed inset-0 bg-white pointer-events-none opacity-0 z-50"></div>
+
+  <!-- Toast / Message Box (Pengganti alert) -->
+  <div id="toastBox" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 transition-all duration-300 opacity-0 -translate-y-4 pointer-events-none">
+    <div class="bg-zinc-900/95 border border-amber-500/50 text-zinc-100 px-4 py-2.5 rounded-full shadow-2xl flex items-center gap-2.5 text-xs sm:text-sm font-medium backdrop-blur-md">
+      <i id="toastIcon" class="fa-solid fa-circle-info text-amber-400"></i>
+      <span id="toastText">Pesan notifikasi</span>
+    </div>
+  </div>
+
+  <!-- Header Kamera Retro -->
+  <header class="camera-leather border-b border-zinc-800/90 px-3 sm:px-6 py-2.5 flex items-center justify-between sticky top-0 z-30">
+    <div class="flex items-center gap-2.5">
+      <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/20 text-zinc-950 font-bold">
+        <i class="fa-solid fa-camera-retro text-base"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="font-bold text-sm sm:text-base tracking-tight text-zinc-100">LensaRetro <span class="text-amber-400 font-mono-tech text-xs">73-PRO</span></h1>
+          <span class="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono-tech bg-zinc-800 text-amber-400 rounded border border-zinc-700">STUDIO EDITION</span>
+        </div>
+        <p class="text-[10px] text-zinc-400 hidden sm:block">Kamera Live, Film Analog, Handcam & Artistik</p>
+      </div>
+    </div>
+
+    <!-- Mode Switcher (Kamera Live vs Upload Foto) -->
+    <div class="flex items-center bg-zinc-900 p-1 rounded-xl border border-zinc-800">
+      <button id="btnModeCamera" class="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all bg-amber-500 text-zinc-950 shadow">
+        <i class="fa-solid fa-video"></i>
+        <span>Kamera</span>
+      </button>
+      <button id="btnModeUpload" class="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-zinc-400 hover:text-zinc-200">
+        <i class="fa-solid fa-image"></i>
+        <span>Galeri</span>
+      </button>
+      <input type="file" id="fileInput" accept="image/*" class="hidden" />
+    </div>
+
+    <!-- Kontrol Cepat Kamera (Timer & Flip) -->
+    <div class="flex items-center gap-1.5 sm:gap-2">
+      <button id="btnTimer" title="Timer Jepret" class="px-2.5 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-mono-tech text-zinc-300 flex items-center gap-1 transition">
+        <i class="fa-solid fa-stopwatch text-amber-400"></i>
+        <span id="timerLabel">OFF</span>
+      </button>
+      <button id="btnFlipCamera" title="Ganti Kamera Depan/Belakang" class="p-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 transition">
+        <i class="fa-solid fa-camera-rotate"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Area Utama: Viewfinder / Canvas Preview + Kontrol -->
+  <main class="flex-1 flex flex-col lg:flex-row max-w-7xl w-full mx-auto p-2 sm:p-4 gap-3 sm:gap-4">
+
+    <!-- Kolom Kiri: Viewfinder Kamera & Hasil Foto -->
+    <div class="flex-1 flex flex-col items-center justify-center bg-zinc-950 rounded-2xl border border-zinc-800/90 p-2 sm:p-4 relative overflow-hidden shadow-2xl min-h-[340px] sm:min-h-[460px]">
+      
+      <!-- Top Viewfinder HUD -->
+      <div class="w-full flex items-center justify-between text-[11px] font-mono-tech text-zinc-400 px-2 pb-2 z-10">
+        <div class="flex items-center gap-2">
+          <span id="liveIndicator" class="inline-flex items-center gap-1.5 text-emerald-400">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> LIVE SENSOR
+          </span>
+          <span class="text-zinc-600">|</span>
+          <span id="activeFilterBadge" class="text-amber-400 font-semibold uppercase">NORMAL</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span id="resolutionBadge">AUTO-HD</span>
+          <button id="btnMirror" title="Cerminkan Kamera" class="px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-800 hover:border-amber-500/50 text-zinc-300">
+            <i class="fa-solid fa-left-right text-[10px]"></i> Mirror
+          </button>
+        </div>
+      </div>
+
+      <!-- Container Canvas Utama -->
+      <div id="viewportContainer" class="relative flex-1 w-full flex items-center justify-center overflow-hidden rounded-xl bg-[#0a0a0c]">
+        <!-- Video tersembunyi sebagai sumber stream WebRTC -->
+        <video id="videoSource" autoplay playsinline muted class="hidden"></video>
+        
+        <!-- Canvas Real-time Preview & Render Akhir -->
+        <canvas id="previewCanvas" class="max-w-full max-h-[58vh] lg:max-h-[66vh] w-auto h-auto object-contain rounded-lg shadow-2xl transition-all duration-150"></canvas>
+
+        <!-- Countdown Overlay -->
+        <div id="countdownOverlay" class="hidden absolute inset-0 bg-black/50 backdrop-blur-[2px] flex items-center justify-center z-20">
+          <span id="countdownNumber" class="font-mono-tech text-7xl sm:text-8xl font-bold text-amber-400 drop-shadow-[0_0_25px_rgba(245,158,11,0.8)]">3</span>
+        </div>
+
+        <!-- Placeholder jika kamera belum aktif / ditolak -->
+        <div id="cameraFallback" class="hidden absolute inset-0 flex flex-col items-center justify-center text-center p-6 bg-zinc-900/95 z-10">
+          <div class="w-14 h-14 rounded-full bg-zinc-800 flex items-center justify-center mb-3 text-amber-400 text-2xl">
+            <i class="fa-solid fa-camera-slash"></i>
+          </div>
+          <h3 class="font-semibold text-base text-zinc-100 mb-1">Kamera Tidak Terdeteksi / Belum Diizinkan</h3>
+          <p class="text-xs text-zinc-400 max-w-sm mb-4">Izinkan akses kamera pada browser Anda atau unggah foto langsung dari galeri untuk mulai mengedit dengan 73 filter retro.</p>
+          <div class="flex flex-wrap justify-center gap-2">
+            <button id="btnRetryCamera" class="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-semibold text-xs transition">
+              <i class="fa-solid fa-rotate-right mr-1"></i> Aktifkan Kamera
+            </button>
+            <button id="btnFallbackUpload" class="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-semibold text-xs border border-zinc-700 transition">
+              <i class="fa-solid fa-upload mr-1"></i> Unggah Foto
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Bar Bawah Viewfinder (Shutter / Retake / Download) -->
+      <div class="w-full pt-3 pb-1 px-2 flex items-center justify-between gap-2 z-10">
+        <!-- Tombol Kiri: Unggah Cepat / Kembali ke Live -->
+        <div class="flex items-center gap-2">
+          <button id="btnQuickUpload" class="px-3 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-medium text-zinc-200 flex items-center gap-1.5 transition">
+            <i class="fa-solid fa-folder-open text-amber-400"></i>
+            <span class="hidden sm:inline">Buka Foto</span>
+          </button>
+          <button id="btnRetake" class="hidden px-3 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-xs font-semibold text-amber-400 items-center gap-1.5 transition">
+            <i class="fa-solid fa-arrow-rotate-left"></i>
+            <span>Foto Ulang</span>
+          </button>
+        </div>
+
+        <!-- Tombol Tengah: Shutter Kamera -->
+        <div class="flex items-center justify-center">
+          <button id="btnShutter" title="Ambil Foto" class="group relative w-16 h-16 rounded-full bg-zinc-800 p-1.5 border-2 border-zinc-600 hover:border-amber-400 transition-all active:scale-95 shadow-lg">
+            <div class="w-full h-full rounded-full bg-gradient-to-b from-zinc-100 to-zinc-300 group-hover:from-amber-400 group-hover:to-amber-500 transition-colors flex items-center justify-center">
+              <div class="w-11 h-11 rounded-full border border-zinc-400/50"></div>
+            </div>
+          </button>
+        </div>
+
+        <!-- Tombol Kanan: Unduh Hasil -->
+        <div class="flex items-center gap-2">
+          <button id="btnDownload" class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-zinc-950 font-bold text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-amber-500/20 transition active:scale-95">
+            <i class="fa-solid fa-download"></i>
+            <span>Simpan HD</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Kolom Kanan: Panel Kontrol Filter, Pencahayaan & Watermark -->
+    <div class="w-full lg:w-[400px] xl:w-[430px] bg-[#18181b] rounded-2xl border border-zinc-800/90 flex flex-col overflow-hidden shadow-xl">
+      
+      <!-- Tab Navigasi Studio -->
+      <div class="grid grid-cols-3 border-b border-zinc-800 bg-zinc-900/70 p-1 gap-1">
+        <button data-tab="filters" class="studio-tab active py-2 px-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 bg-zinc-800 text-amber-400 shadow-sm transition">
+          <i class="fa-solid fa-film"></i>
+          <span>73 Filter</span>
+        </button>
+        <button data-tab="adjust" class="studio-tab py-2 px-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 text-zinc-400 hover:text-zinc-200 transition">
+          <i class="fa-solid fa-sliders"></i>
+          <span>Cahaya</span>
+        </button>
+        <button data-tab="watermark" class="studio-tab py-2 px-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 text-zinc-400 hover:text-zinc-200 transition">
+          <i class="fa-solid fa-stamp"></i>
+          <span>Cap & Bingkai</span>
+        </button>
+      </div>
+
+      <!-- Konten Tab 1: Koleksi 73 Filter dengan Kategori & Pencarian -->
+      <div id="tab-filters" class="tab-content p-3 sm:p-3.5 flex-1 flex flex-col overflow-hidden max-h-[380px] lg:max-h-[560px]">
+        <!-- Bar Pencarian Filter -->
+        <div class="relative mb-2">
+          <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 text-xs"></i>
+          <input type="text" id="filterSearchInput" placeholder="Cari 73 filter (misal: Nokia, VHS, Crayon, Kodak)..." class="w-full bg-zinc-900 border border-zinc-800 focus:border-amber-500/70 rounded-xl pl-8 pr-7 py-1.5 text-xs text-zinc-100 placeholder:text-zinc-500 focus:outline-none transition" />
+          <button id="btnClearSearch" class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 text-xs">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <!-- Tab Kategori Filter (Scrollable Horizontal) -->
+        <div id="categoryTabs" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-2 mb-2 border-b border-zinc-800/80 shrink-0">
+          <button data-cat="all" class="cat-pill active px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap bg-amber-500 text-zinc-950 transition">Semua (73)</button>
+          <button data-cat="klasik" class="cat-pill px-2.5 py-1 rounded-lg text-[11px] font-medium whitespace-nowrap bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800 transition">Klasik & HP (15)</button>
+          <button data-cat="analog" class="cat-pill px-2.5 py-1 rounded-lg text-[11px] font-medium whitespace-nowrap bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800 transition">Analog & Studio (18)</button>
+          <button data-cat="digicam" class="cat-pill px-2.5 py-1 rounded-lg text-[11px] font-medium whitespace-nowrap bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800 transition">Digicam & 2010s (15)</button>
+          <button data-cat="handcam" class="cat-pill px-2.5 py-1 rounded-lg text-[11px] font-medium whitespace-nowrap bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800 transition">Handcam (10)</button>
+          <button data-cat="artistik" class="cat-pill px-2.5 py-1 rounded-lg text-[11px] font-medium whitespace-nowrap bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800 transition">Kertas & Crayon (15)</button>
+        </div>
+
+        <!-- Grid Daftar Filter -->
+        <div id="filterGrid" class="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-3 gap-2 overflow-y-auto pr-0.5 flex-1">
+          <!-- Diisi via JavaScript -->
+        </div>
+      </div>
+
+      <!-- Konten Tab 2: Edit Pencahayaan & Tone -->
+      <div id="tab-adjust" class="tab-content hidden p-3 sm:p-4 flex-1 overflow-y-auto max-h-[340px] lg:max-h-[540px] space-y-3.5">
+        <div class="flex items-center justify-between border-b border-zinc-800 pb-2">
+          <span class="text-xs font-semibold text-zinc-300">Kalibrasi Pencahayaan Manual</span>
+          <button id="btnResetAdjust" class="text-[11px] font-mono-tech text-amber-400 hover:text-amber-300 flex items-center gap-1 px-2 py-1 rounded bg-zinc-900 border border-zinc-800">
+            <i class="fa-solid fa-rotate-left"></i> Reset
+          </button>
+        </div>
+
+        <!-- Sliders -->
+        <div id="slidersContainer" class="space-y-3">
+          <!-- Brightness -->
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="text-zinc-300"><i class="fa-regular fa-sun w-4 text-amber-400"></i> Kecerahan</span>
+              <span id="val-brightness" class="font-mono-tech text-amber-400">0</span>
+            </div>
+            <input type="range" id="adj-brightness" min="-60" max="60" value="0" class="retro-slider w-full">
+          </div>
+
+          <!-- Exposure -->
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="text-zinc-300"><i class="fa-solid fa-circle-half-stroke w-4 text-amber-400"></i> Eksposur (EV)</span>
+              <span id="val-exposure" class="font-mono-tech text-amber-400">0</span>
+            </div>
+            <input type="range" id="adj-exposure" min="-50" max="50" value="0" class="retro-slider w-full">
+          </div>
+
+          <!-- Contrast -->
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="text-zinc-300"><i class="fa-solid fa-adjust w-4 text-amber-400"></i> Kontras</span>
+              <span id="val-contrast" class="font-mono-tech text-amber-400">0</span>
+            </div>
+            <input type="range" id="adj-contrast" min="-50" max="70" value="0" class="retro-slider w-full">
+          </div>
+
+          <!-- Saturation -->
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="text-zinc-300"><i class="fa-solid fa-droplet w-4 text-amber-400"></i> Saturasi Warna</span>
+              <span id="val-saturation" class="font-mono-tech text-amber-400">0</span>
+            </div>
+            <input type="range" id="adj-saturation" min="-100" max="80" value="0" class="retro-slider w-full">
+          </div>
+
+          <!-- Warmth -->
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="text-zinc-300"><i class="fa-solid fa-temperature-three-quarters w-4 text-amber-400"></i> Suhu Warna (Warmth)</span>
+              <span id="val-warmth" class="font-mono-tech text-amber-400">0</span>
+            </div>
+            <input type="range" id="adj-warmth" min="-50" max="50" value="0" class="retro-slider w-full">
+          </div>
+
+          <!-- Vignette -->
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="text-zinc-300"><i class="fa-regular fa-circle-dot w-4 text-amber-400"></i> Vignette Sudut</span>
+              <span id="val-vignette" class="font-mono-tech text-amber-400">0%</span>
+            </div>
+            <input type="range" id="adj-vignette" min="0" max="100" value="0" class="retro-slider w-full">
+          </div>
+
+          <!-- Grain -->
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="text-zinc-300"><i class="fa-solid fa-braille w-4 text-amber-400"></i> Film Grain / Noise</span>
+              <span id="val-grain" class="font-mono-tech text-amber-400">0%</span>
+            </div>
+            <input type="range" id="adj-grain" min="0" max="100" value="0" class="retro-slider w-full">
+          </div>
+        </div>
+      </div>
+
+      <!-- Konten Tab 3: Watermark & Bingkai Polaroid -->
+      <div id="tab-watermark" class="tab-content hidden p-3 sm:p-4 flex-1 overflow-y-auto max-h-[340px] lg:max-h-[540px] space-y-4">
+        
+        <!-- Toggle Watermark -->
+        <div class="flex items-center justify-between bg-zinc-900/90 p-3 rounded-xl border border-zinc-800">
+          <div>
+            <div class="text-xs font-semibold text-zinc-100">Aktifkan Cap Tanggal / Watermark</div>
+            <div class="text-[11px] text-zinc-400">Tampilkan teks digital retro di foto</div>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="wmEnabled" checked class="sr-only peer">
+            <div class="w-10 h-5 bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500"></div>
+          </label>
+        </div>
+
+        <!-- Preset Teks Watermark -->
+        <div>
+          <label class="block text-xs font-semibold text-zinc-300 mb-1.5">Preset Watermark Kamera</label>
+          <select id="wmPreset" class="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-amber-500">
+            <option value="date98">Tanggal Film '98 ('98 11 20)</option>
+            <option value="dateToday">Tanggal Hari Ini (20/11/2026)</option>
+            <option value="autoDevice">Otomatis Sesuai Filter Aktif</option>
+            <option value="kodak">SHOT ON KODAK GOLD 200</option>
+            <option value="nokiaN8">NOKIA N8 • CARL ZEISS 12MP</option>
+            <option value="iphone5s">Shot on iPhone 5s</option>
+            <option value="digicam">DIGICAM 2005 • CCD SENSOR</option>
+            <option value="handcam">REC ● 00:04:18 SP</option>
+            <option value="blackberry">BlackBerry Bold 9900</option>
+            <option value="custom">Teks Kustom Sendiri...</option>
+          </select>
+        </div>
+
+        <!-- Input Teks Kustom / Catatan Polaroid -->
+        <div>
+          <label class="block text-xs font-semibold text-zinc-300 mb-1.5">Teks Kustom / Catatan Bawah Polaroid</label>
+          <input type="text" id="wmCustomText" placeholder="Ketik teks cap atau catatan kenangan..." value="'98 11 20" maxlength="36" class="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-amber-500" />
+        </div>
+
+        <!-- Gaya Font & Warna Watermark -->
+        <div class="grid grid-cols-2 gap-2.5">
+          <div>
+            <label class="block text-xs font-semibold text-zinc-300 mb-1.5">Gaya Tampilan</label>
+            <select id="wmStyle" class="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-2.5 py-2 text-xs text-zinc-100 focus:outline-none focus:border-amber-500">
+              <option value="retroOrange">LED Oranye Film</option>
+              <option value="retroRed">LED Merah Camcorder</option>
+              <option value="cleanWhite">Putih Modern Minimalis</option>
+              <option value="yellowSub">Kuning Sinematik</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-zinc-300 mb-1.5">Posisi Cap</label>
+            <select id="wmPosition" class="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-2.5 py-2 text-xs text-zinc-100 focus:outline-none focus:border-amber-500">
+              <option value="bottom-right">Kanan Bawah</option>
+              <option value="bottom-left">Kiri Bawah</option>
+              <option value="top-left">Kiri Atas</option>
+              <option value="top-right">Kanan Atas</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Toggle Bingkai Polaroid Manual -->
+        <div class="flex items-center justify-between bg-zinc-900/90 p-3 rounded-xl border border-zinc-800">
+          <div>
+            <div class="text-xs font-semibold text-zinc-100">Bingkai Putih Polaroid</div>
+            <div class="text-[11px] text-zinc-400">Otomatis aktif pada filter Polaroid</div>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="polaroidFrameToggle" class="sr-only peer">
+            <div class="w-10 h-5 bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500"></div>
+          </label>
+        </div>
+
+        <!-- Toggle Bingkai Sprocket Film 35mm -->
+        <div class="flex items-center justify-between bg-zinc-900/90 p-3 rounded-xl border border-zinc-800">
+          <div>
+            <div class="text-xs font-semibold text-zinc-100">Bingkai Lubang Roll Film 35mm</div>
+            <div class="text-[11px] text-zinc-400">Tambahkan tepi negatif film klasik</div>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="filmSprocketToggle" class="sr-only peer">
+            <div class="w-10 h-5 bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500"></div>
+          </label>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer Minimalis -->
+  <footer class="text-center py-2 text-[11px] text-zinc-500 border-t border-zinc-900">
+    LensaRetro Studio • 73 Filter Kamera Analog, Handcam & Artistik • 100% Lokal
+  </footer>
+
+  <script>
+    /**
+     * ============================================================================
+     * KONFIGURASI LENGKAP 73 FILTER KAMERA, HANDCAM, KERTAS & ARTISTIK
+     * ============================================================================
+     */
+    const FILTERS = [
+      // ==========================================================================
+      // KATEGORI 1: KLASIK & HP JADUL (15 FILTER)
+      // ==========================================================================
+      { id: 'normal', category: 'klasik', name: 'Normal', tag: 'ORI', color: '#a1a1aa', deviceLabel: 'ORIGINAL LENS', cssFilter: 'none', vignette: 0, grain: 0 },
+      { id: 'kodak', category: 'klasik', name: 'Kodak', tag: 'GOLD', color: '#f59e0b', deviceLabel: 'KODAK GOLD 200', cssFilter: 'contrast(1.12) saturate(1.22) sepia(0.18) brightness(1.03)', tint: 'rgba(255, 195, 70, 0.10)', vignette: 0.22, grain: 0.18 },
+      { id: 'retro', category: 'klasik', name: 'Retro', tag: '70s', color: '#fb923c', deviceLabel: 'RETRO 1978', cssFilter: 'contrast(0.92) saturate(0.85) sepia(0.32) brightness(1.04) hue-rotate(-8deg)', tint: 'rgba(255, 160, 90, 0.14)', vignette: 0.28, grain: 0.22 },
+      { id: 'vintage', category: 'klasik', name: 'Vintage', tag: 'OLD', color: '#d97706', deviceLabel: 'VINTAGE ARCHIVE', cssFilter: 'sepia(0.45) contrast(1.05) brightness(0.96) saturate(0.8)', tint: 'rgba(180, 130, 70, 0.15)', vignette: 0.45, grain: 0.30 },
+      { id: 'android_lama', category: 'klasik', name: 'Android Lama', tag: '2012', color: '#84cc16', deviceLabel: 'ANDROID 4.0 ICS', cssFilter: 'contrast(1.24) saturate(1.25) hue-rotate(8deg) brightness(0.98)', tint: 'rgba(130, 210, 90, 0.09)', vignette: 0.15, grain: 0.24, pixelate: 0.65 },
+      { id: 'iphone_5s', category: 'klasik', name: 'iPhone 5s', tag: 'iOS 7', color: '#e4e4e7', deviceLabel: 'Shot on iPhone 5s', cssFilter: 'contrast(1.07) saturate(1.08) sepia(0.08) brightness(1.04)', tint: 'rgba(255, 235, 205, 0.07)', vignette: 0.12, grain: 0.08 },
+      { id: 'polaroid', category: 'klasik', name: 'Polaroid', tag: 'INSTA', color: '#f8fafc', deviceLabel: 'POLAROID 600', cssFilter: 'contrast(0.94) saturate(0.88) sepia(0.22) brightness(1.07)', tint: 'rgba(220, 235, 255, 0.09)', vignette: 0.25, grain: 0.20, forcePolaroid: true },
+      { id: 'nokia_n8', category: 'klasik', name: 'Nokia N8', tag: 'ZEISS', color: '#2563eb', deviceLabel: 'NOKIA N8 • ZEISS 12MP', cssFilter: 'contrast(1.22) saturate(1.16) brightness(1.01) hue-rotate(3deg)', tint: 'rgba(160, 205, 255, 0.08)', vignette: 0.18, grain: 0.12 },
+      { id: 'nokia_low_mp', category: 'klasik', name: 'Nokia Low MP', tag: '0.3MP', color: '#64748b', deviceLabel: 'NOKIA VGA 640x480', cssFilter: 'contrast(1.15) saturate(0.78) sepia(0.15) brightness(0.97)', tint: 'rgba(120, 140, 130, 0.12)', vignette: 0.25, grain: 0.35, pixelate: 0.26 },
+      { id: 'samsung_j1', category: 'klasik', name: 'Samsung J1', tag: '2015', color: '#3b82f6', deviceLabel: 'SAMSUNG GALAXY J1', cssFilter: 'contrast(1.30) saturate(1.28) brightness(1.08)', tint: 'rgba(210, 235, 255, 0.08)', vignette: 0.12, grain: 0.22, pixelate: 0.58 },
+      { id: 'blackberry', category: 'klasik', name: 'BlackBerry', tag: 'BBM', color: '#be185d', deviceLabel: 'BlackBerry Bold 9900', cssFilter: 'contrast(1.26) saturate(0.92) sepia(0.16) hue-rotate(-15deg) brightness(0.94)', tint: 'rgba(135, 35, 85, 0.13)', vignette: 0.36, grain: 0.26 },
+      { id: 'sony_ericsson', category: 'klasik', name: 'SE Cybershot', tag: 'K800i', color: '#0284c7', deviceLabel: 'SONY ERICSSON K800i', cssFilter: 'contrast(1.25) saturate(1.12) brightness(1.06) hue-rotate(5deg)', tint: 'rgba(180, 225, 255, 0.14)', vignette: 0.22, grain: 0.18 },
+      { id: 'iphone_4', category: 'klasik', name: 'iPhone 4', tag: 'HDR', color: '#cbd5e1', deviceLabel: 'Shot on iPhone 4', cssFilter: 'contrast(1.14) saturate(1.05) sepia(0.16) brightness(1.02)', tint: 'rgba(245, 215, 175, 0.10)', vignette: 0.20, grain: 0.24 },
+      { id: 'motorola_razr', category: 'klasik', name: 'Moto Razr V3', tag: '2004', color: '#6366f1', deviceLabel: 'MOTOROLA RAZR V3', cssFilter: 'contrast(1.18) saturate(0.85) hue-rotate(-18deg) brightness(0.95)', tint: 'rgba(110, 120, 235, 0.16)', vignette: 0.28, grain: 0.32, pixelate: 0.34 },
+      { id: 'ipad_2', category: 'klasik', name: 'iPad 2', tag: '0.7MP', color: '#94a3b8', deviceLabel: 'iPad 2 Camera', cssFilter: 'contrast(0.90) saturate(0.86) brightness(1.06) sepia(0.10)', tint: 'rgba(225, 235, 240, 0.10)', vignette: 0.14, grain: 0.28, pixelate: 0.48 },
+
+      // ==========================================================================
+      // KATEGORI 2: KAMERA ANALOG & FILM STUDIO (18 FILTER)
+      // ==========================================================================
+      { id: 'film', category: 'analog', name: 'Film 35mm', tag: '35MM', color: '#eab308', deviceLabel: '35MM CINE FILM', cssFilter: 'contrast(1.15) saturate(0.95) sepia(0.14) brightness(0.99)', tint: 'rgba(40, 80, 75, 0.08)', vignette: 0.30, grain: 0.35 },
+      { id: 'kodak_funsaver', category: 'analog', name: 'FunSaver', tag: 'DISP', color: '#facc15', deviceLabel: 'KODAK FUNSAVER 800', cssFilter: 'contrast(1.20) saturate(1.18) sepia(0.15) hue-rotate(6deg) brightness(1.05)', tint: 'rgba(65, 145, 95, 0.12)', vignette: 0.38, grain: 0.34 },
+      { id: 'roll_2000y', category: 'analog', name: 'Roll 2000y', tag: 'EXP', color: '#fb7185', deviceLabel: 'EXPIRED FILM 2000', cssFilter: 'contrast(1.06) saturate(1.15) sepia(0.28) hue-rotate(-10deg)', lightLeak: true, vignette: 0.30, grain: 0.32 },
+      { id: 'fuji_superia', category: 'analog', name: 'Fuji Superia', tag: '400', color: '#10b981', deviceLabel: 'FUJIFILM SUPERIA 400', cssFilter: 'contrast(1.14) saturate(1.18) hue-rotate(8deg) brightness(1.02)', tint: 'rgba(45, 180, 125, 0.11)', vignette: 0.24, grain: 0.25 },
+      { id: 'cinestill_800t', category: 'analog', name: 'CineStill 800T', tag: '800T', color: '#ef4444', deviceLabel: 'CINESTILL 800T TUNGSTEN', cssFilter: 'contrast(1.22) saturate(1.16) hue-rotate(-12deg) brightness(0.96)', gradientOverlay: ['rgba(255, 45, 55, 0.16)', 'rgba(20, 130, 210, 0.18)'], vignette: 0.32, grain: 0.26 },
+      { id: 'ilford_hp5', category: 'analog', name: 'Ilford HP5', tag: 'B&W', color: '#e4e4e7', deviceLabel: 'ILFORD HP5 PLUS 400', cssFilter: 'grayscale(1) contrast(1.24) brightness(1.01)', vignette: 0.32, grain: 0.42 },
+      { id: 'agfa_vista', category: 'analog', name: 'Agfa Vista 200', tag: 'AGFA', color: '#f43f5e', deviceLabel: 'AGFA VISTA PLUS 200', cssFilter: 'contrast(1.20) saturate(1.34) sepia(0.12) hue-rotate(-6deg)', tint: 'rgba(245, 65, 85, 0.09)', vignette: 0.22, grain: 0.22 },
+      { id: 'kodak_portra', category: 'analog', name: 'Portra 400', tag: 'SKIN', color: '#fdba74', deviceLabel: 'KODAK PORTRA 400', cssFilter: 'contrast(0.96) saturate(0.94) sepia(0.14) brightness(1.06)', tint: 'rgba(255, 210, 175, 0.11)', vignette: 0.16, grain: 0.18 },
+      { id: 'kodak_ektar', category: 'analog', name: 'Ektar 100', tag: 'VIVID', color: '#ea580c', deviceLabel: 'KODAK EKTAR 100', cssFilter: 'contrast(1.24) saturate(1.42) brightness(1.01)', tint: 'rgba(255, 140, 50, 0.07)', vignette: 0.20, grain: 0.12 },
+      { id: 'lomo_lca', category: 'analog', name: 'Lomo LC-A', tag: 'LOMO', color: '#9333ea', deviceLabel: 'LOMOGRAPHY LC-A', cssFilter: 'contrast(1.36) saturate(1.45) hue-rotate(6deg)', vignette: 0.62, grain: 0.28 },
+      { id: 'cross_process', category: 'analog', name: 'Cross Process', tag: 'X-PRO', color: '#84cc16', deviceLabel: 'E-6 IN C-41 X-PRO', cssFilter: 'contrast(1.28) saturate(1.30) hue-rotate(24deg) sepia(0.18)', tint: 'rgba(130, 220, 60, 0.14)', vignette: 0.30, grain: 0.26 },
+      { id: 'technicolor', category: 'analog', name: 'Technicolor', tag: '2-STR', color: '#dc2626', deviceLabel: 'TECHNICOLOR STUDIO', cssFilter: 'contrast(1.28) saturate(1.35) hue-rotate(-14deg)', gradientOverlay: ['rgba(235, 40, 40, 0.16)', 'rgba(20, 185, 195, 0.16)'], vignette: 0.28, grain: 0.20 },
+      { id: 'bleach_bypass', category: 'analog', name: 'Bleach Bypass', tag: 'SILVER', color: '#71717a', deviceLabel: 'STUDIO BLEACH BYPASS', cssFilter: 'contrast(1.48) saturate(0.42) brightness(0.95)', vignette: 0.38, grain: 0.30 },
+      { id: 'teal_orange', category: 'analog', name: 'Teal & Orange', tag: 'GRADE', color: '#0891b2', deviceLabel: 'HOLLYWOOD LUT', cssFilter: 'contrast(1.22) saturate(1.24)', gradientOverlay: ['rgba(15, 155, 175, 0.22)', 'rgba(255, 125, 35, 0.22)'], vignette: 0.28, grain: 0.15 },
+      { id: 'studio_noir', category: 'analog', name: 'Studio Noir', tag: 'NOIR', color: '#18181b', deviceLabel: 'STUDIO LOW-KEY NOIR', cssFilter: 'grayscale(1) contrast(1.62) brightness(0.86)', vignette: 0.55, grain: 0.26 },
+      { id: 'kodak_trix', category: 'analog', name: 'Kodak Tri-X', tag: '400TX', color: '#a1a1aa', deviceLabel: 'KODAK TRI-X 400', cssFilter: 'grayscale(1) contrast(1.42) brightness(0.97)', vignette: 0.30, grain: 0.38 },
+      { id: 'sepia_arsip', category: 'analog', name: 'Sepia Arsip', tag: '1890', color: '#92400e', deviceLabel: 'ARCHIVE PLATE 1895', cssFilter: 'sepia(0.88) contrast(1.16) brightness(0.92)', tint: 'rgba(135, 85, 35, 0.18)', vignette: 0.56, grain: 0.40 },
+      { id: 'negatif', category: 'analog', name: 'Negatif', tag: 'INV', color: '#38bdf8', deviceLabel: 'FILM NEGATIVE', cssFilter: 'invert(1) contrast(1.08) saturate(1.1)', vignette: 0.15, grain: 0.15 },
+
+      // ==========================================================================
+      // KATEGORI 3: DIGICAM & ERA 2010s (15 FILTER)
+      // ==========================================================================
+      { id: 'digicam', category: 'digicam', name: 'Digicam Jadul', tag: 'CCD', color: '#38bdf8', deviceLabel: 'CYBERSHOT 2004', cssFilter: 'contrast(1.18) saturate(1.18) brightness(1.09) sepia(0.12)', tint: 'rgba(190, 230, 255, 0.12)', vignette: 0.20, grain: 0.26, bloom: true },
+      { id: 'laut_senja', category: 'digicam', name: 'Laut Senja', tag: 'DUSK', color: '#f43f5e', deviceLabel: 'SUNSET COAST', cssFilter: 'contrast(1.16) saturate(1.35) sepia(0.22) hue-rotate(-14deg) brightness(1.02)', gradientOverlay: ['rgba(255, 115, 45, 0.24)', 'rgba(120, 40, 140, 0.24)'], vignette: 0.25, grain: 0.12 },
+      { id: 'low_pixel', category: 'digicam', name: 'Low Pixel', tag: '8-BIT', color: '#a855f7', deviceLabel: 'LOW-RES 160x120', cssFilter: 'contrast(1.2) saturate(1.25)', vignette: 0.10, grain: 0.10, pixelate: 0.14 },
+      { id: 'sinematik', category: 'digicam', name: 'Sinematik', tag: '2.39:1', color: '#06b6d4', deviceLabel: 'ANAMORPHIC CINE', cssFilter: 'contrast(1.25) saturate(1.12) brightness(0.95) hue-rotate(-6deg)', gradientOverlay: ['rgba(0, 145, 165, 0.16)', 'rgba(255, 125, 40, 0.16)'], letterbox: true, vignette: 0.35, grain: 0.18 },
+      { id: 'hitam_putih', category: 'digicam', name: 'Hitam Putih', tag: 'B&W', color: '#d4d4d8', deviceLabel: 'MONOCHROME PRO', cssFilter: 'grayscale(1) contrast(1.32) brightness(0.98)', vignette: 0.35, grain: 0.32 },
+      { id: 'sony_w800', category: 'digicam', name: 'Sony W800', tag: '2014', color: '#7dd3fc', deviceLabel: 'SONY CYBERSHOT W800', cssFilter: 'contrast(1.20) saturate(1.16) brightness(1.08)', tint: 'rgba(200, 235, 255, 0.10)', vignette: 0.15, grain: 0.16, bloom: true },
+      { id: 'canon_ixus', category: 'digicam', name: 'Canon IXUS', tag: '2007', color: '#fbbf24', deviceLabel: 'CANON DIGITAL IXUS', cssFilter: 'contrast(1.12) saturate(1.15) sepia(0.14) brightness(1.07)', tint: 'rgba(255, 220, 175, 0.11)', vignette: 0.18, grain: 0.20, bloom: true },
+      { id: 'nikon_coolpix', category: 'digicam', name: 'Nikon Coolpix', tag: '2011', color: '#facc15', deviceLabel: 'NIKON COOLPIX S2500', cssFilter: 'contrast(1.18) saturate(1.32) brightness(1.05)', tint: 'rgba(255, 240, 150, 0.08)', vignette: 0.14, grain: 0.18 },
+      { id: 'fuji_finepix', category: 'digicam', name: 'Fuji FinePix', tag: 'CCD', color: '#2dd4bf', deviceLabel: 'FUJIFILM FINEPIX A500', cssFilter: 'contrast(1.15) saturate(1.08) hue-rotate(10deg) brightness(1.03)', tint: 'rgba(130, 225, 215, 0.12)', vignette: 0.20, grain: 0.22 },
+      { id: 'ig_2012', category: 'digicam', name: 'Instagram 2012', tag: 'EARLY', color: '#d97706', deviceLabel: 'EARLYBIRD 2012', cssFilter: 'sepia(0.32) contrast(1.18) brightness(1.02) saturate(1.12)', tint: 'rgba(245, 195, 120, 0.15)', vignette: 0.44, grain: 0.20 },
+      { id: 'tumblr_2014', category: 'digicam', name: 'Tumblr 2014', tag: 'GRUNGE', color: '#64748b', deviceLabel: 'TUMBLR AESTHETIC 2014', cssFilter: 'contrast(0.88) saturate(0.68) brightness(1.04) hue-rotate(8deg)', tint: 'rgba(140, 170, 195, 0.14)', vignette: 0.30, grain: 0.34 },
+      { id: 'hipstamatic', category: 'digicam', name: 'Hipstamatic', tag: '2010', color: '#b45309', deviceLabel: 'HIPSTAMATIC LENS', cssFilter: 'contrast(1.32) saturate(1.26) sepia(0.24)', tint: 'rgba(215, 150, 65, 0.14)', vignette: 0.58, grain: 0.28 },
+      { id: 'retrica_pastel', category: 'digicam', name: 'Retrica Pastel', tag: '2013', color: '#f9a8d4', deviceLabel: 'RETRICA SWEET 2013', cssFilter: 'contrast(0.94) saturate(1.06) brightness(1.09) sepia(0.10)', tint: 'rgba(255, 190, 220, 0.16)', vignette: 0.22, grain: 0.14 },
+      { id: 'vsco_a6', category: 'digicam', name: 'VSCO A6', tag: '2015', color: '#d6d3d1', deviceLabel: 'VSCO CAM A6 ANALOG', cssFilter: 'contrast(0.92) saturate(0.88) sepia(0.12) brightness(1.04)', tint: 'rgba(235, 225, 210, 0.08)', vignette: 0.14, grain: 0.16 },
+      { id: 'webcam_2009', category: 'digicam', name: 'Webcam 2009', tag: 'VGA', color: '#94a3b8', deviceLabel: 'USB WEBCAM 480P', cssFilter: 'contrast(0.88) saturate(0.75) brightness(1.05) hue-rotate(12deg)', tint: 'rgba(160, 200, 220, 0.14)', vignette: 0.26, grain: 0.44, pixelate: 0.32 },
+
+      // ==========================================================================
+      // KATEGORI 4: HANDCAM VARIATIF (10 FILTER)
+      // ==========================================================================
+      { id: 'handcam', category: 'handcam', name: 'Handcam', tag: 'REC', color: '#ef4444', deviceLabel: 'REC ● HI-8 TAPE', cssFilter: 'contrast(1.15) saturate(1.12) brightness(1.02) hue-rotate(4deg)', tint: 'rgba(100, 150, 255, 0.08)', scanlines: true, recHud: true, hudText: 'SP  00:14:28', vignette: 0.32, grain: 0.28 },
+      { id: 'vhs_1995', category: 'handcam', name: 'VHS 1995', tag: 'VHS', color: '#f97316', deviceLabel: 'PLAY ▶ VHS 1995', cssFilter: 'contrast(1.18) saturate(1.22) sepia(0.18) hue-rotate(-8deg)', vhsTracking: true, scanlines: true, recHud: true, hudText: 'PLAY ▶ 1995', vignette: 0.36, grain: 0.38, pixelate: 0.55 },
+      { id: 'minidv_2003', category: 'handcam', name: 'MiniDV 2003', tag: 'DV', color: '#38bdf8', deviceLabel: 'MINIDV LP 2003', cssFilter: 'contrast(1.24) saturate(1.14) brightness(1.04)', tint: 'rgba(150, 215, 255, 0.10)', scanlines: true, recHud: true, hudText: 'DV-IN  00:08:41', vignette: 0.20, grain: 0.20 },
+      { id: 'hi8_camcorder', category: 'handcam', name: 'Hi8 Camcorder', tag: 'HI-8', color: '#fbbf24', deviceLabel: 'SONY HANDYCAM HI8', cssFilter: 'contrast(1.12) saturate(1.18) sepia(0.24) brightness(1.02)', tint: 'rgba(255, 195, 110, 0.13)', scanlines: true, recHud: true, hudText: 'HI-8  00:22:10', vignette: 0.34, grain: 0.32 },
+      { id: 'nightshot_ir', category: 'handcam', name: 'NightShot IR', tag: 'IR-0', color: '#22c55e', deviceLabel: 'NIGHTSHOT 0 LUX', cssFilter: 'grayscale(1) contrast(1.45) brightness(1.12)', nightVision: true, scanlines: true, recHud: true, hudText: 'NIGHTSHOT [0 LUX]', vignette: 0.45, grain: 0.42 },
+      { id: 'cctv_cam', category: 'handcam', name: 'CCTV Security', tag: 'CAM1', color: '#a1a1aa', deviceLabel: 'CCTV CAM-01', cssFilter: 'grayscale(1) contrast(1.52) brightness(0.95)', scanlines: true, recHud: true, hudText: 'CAM-01  LIVE', vignette: 0.42, grain: 0.46, pixelate: 0.42 },
+      { id: 'betamax_80s', category: 'handcam', name: 'Betamax 80s', tag: 'BETA', color: '#d97706', deviceLabel: 'BETAMAX TAPE 1984', cssFilter: 'contrast(0.92) saturate(0.95) sepia(0.30) brightness(1.01)', tint: 'rgba(235, 175, 100, 0.15)', scanlines: true, vignette: 0.38, grain: 0.36 },
+      { id: 'super_8mm', category: 'handcam', name: 'Super 8mm', tag: '8MM', color: '#ca8a04', deviceLabel: 'KODAK SUPER 8MM', cssFilter: 'sepia(0.32) contrast(1.22) saturate(1.10) brightness(0.98)', filmDust: true, vignette: 0.48, grain: 0.44 },
+      { id: 'camcorder_zoom', category: 'handcam', name: 'Camcorder Zoom', tag: '20X', color: '#eab308', deviceLabel: 'OPTICAL ZOOM 20X', cssFilter: 'contrast(1.16) saturate(1.12) brightness(1.02)', recHud: true, hudText: 'W [|||||---] T 20X', vignette: 0.46, grain: 0.24 },
+      { id: 'tv_crt', category: 'handcam', name: 'TV Tabung CRT', tag: 'RGB', color: '#06b6d4', deviceLabel: 'TRINITRON CRT TV', cssFilter: 'contrast(1.26) saturate(1.25) brightness(1.06)', crtRgb: true, scanlines: true, vignette: 0.52, grain: 0.22 },
+
+      // ==========================================================================
+      // KATEGORI 5: KERTAS, CRAYON & ARTISTIK (15 FILTER)
+      // ==========================================================================
+      { id: 'drainase', category: 'artistik', name: 'Drainase', tag: 'GRIT', color: '#475569', deviceLabel: 'URBAN DRAINAGE', cssFilter: 'contrast(1.35) saturate(0.55) brightness(0.88) hue-rotate(12deg)', tint: 'rgba(45, 75, 70, 0.18)', vignette: 0.48, grain: 0.36 },
+      { id: 'blury', category: 'artistik', name: 'Blury', tag: 'SOFT', color: '#c084fc', deviceLabel: 'DREAM SOFT FOCUS', cssFilter: 'blur(2.6px) contrast(1.05) saturate(1.15) brightness(1.06)', tint: 'rgba(255, 220, 245, 0.12)', vignette: 0.25, grain: 0.12 },
+      { id: 'kertas_koran', category: 'artistik', name: 'Kertas Koran', tag: 'NEWS', color: '#a8a29e', deviceLabel: 'NEWSPRINT HALFTONE', cssFilter: 'grayscale(1) contrast(1.38) sepia(0.22) brightness(1.04)', paperTexture: 'newsprint', halftone: true, vignette: 0.25, grain: 0.25 },
+      { id: 'kertas_kusut', category: 'artistik', name: 'Kertas Kusut', tag: 'PAPER', color: '#d6c7b2', deviceLabel: 'CRUMPLED VINTAGE PAPER', cssFilter: 'sepia(0.38) contrast(1.08) saturate(0.85) brightness(1.02)', paperTexture: 'crumpled', vignette: 0.34, grain: 0.22 },
+      { id: 'kertas_blueprint', category: 'artistik', name: 'Blueprint', tag: 'CYAN', color: '#2563eb', deviceLabel: 'CYANOTYPE BLUEPRINT', cssFilter: 'grayscale(1) contrast(1.45) brightness(1.02)', blueprint: true, paperTexture: 'grid', vignette: 0.28, grain: 0.18 },
+      { id: 'kertas_parchment', category: 'artistik', name: 'Parchment', tag: 'KUNO', color: '#d97706', deviceLabel: 'ANTIQUE PARCHMENT', cssFilter: 'sepia(0.65) contrast(1.14) saturate(0.90) brightness(0.98)', paperTexture: 'parchment', vignette: 0.44, grain: 0.28 },
+      { id: 'kertas_matte', category: 'artistik', name: 'Kertas Matte', tag: 'DOFF', color: '#e7e5e4', deviceLabel: 'FINE ART MATTE PAPER', cssFilter: 'contrast(0.92) saturate(0.90) brightness(1.05) sepia(0.10)', paperTexture: 'matte', vignette: 0.16, grain: 0.16 },
+      { id: 'crayon_pastel', category: 'artistik', name: 'Crayon Pastel', tag: 'PASTEL', color: '#f472b6', deviceLabel: 'SOFT PASTEL CRAYON', cssFilter: 'contrast(0.96) saturate(1.28) brightness(1.08) blur(0.6px)', crayonTexture: 'pastel', vignette: 0.18, grain: 0.20 },
+      { id: 'crayon_wax', category: 'artistik', name: 'Crayon Wax', tag: 'WAX', color: '#facc15', deviceLabel: 'WAX CRAYON ART', cssFilter: 'contrast(1.36) saturate(1.65) brightness(1.04)', crayonTexture: 'wax', vignette: 0.20, grain: 0.24 },
+      { id: 'sketsa_pensil', category: 'artistik', name: 'Sketsa Pensil', tag: 'PENCIL', color: '#71717a', deviceLabel: 'GRAPHITE PENCIL SKETCH', cssFilter: 'grayscale(1) contrast(1.3)', pixelEffect: 'sketch', paperTexture: 'matte', vignette: 0.20, grain: 0.15 },
+      { id: 'cat_air', category: 'artistik', name: 'Cat Air', tag: 'WATER', color: '#38bdf8', deviceLabel: 'WATERCOLOR CANVAS', cssFilter: 'contrast(1.12) saturate(1.38) brightness(1.07) blur(1.1px)', paperTexture: 'watercolor', vignette: 0.22, grain: 0.14 },
+      { id: 'cat_minyak', category: 'artistik', name: 'Cat Minyak', tag: 'OIL', color: '#ea580c', deviceLabel: 'OIL PAINTING IMPASTO', cssFilter: 'contrast(1.32) saturate(1.48) brightness(0.98)', pixelEffect: 'posterize', crayonTexture: 'oil', vignette: 0.28, grain: 0.18 },
+      { id: 'komik_pop', category: 'artistik', name: 'Komik Pop Art', tag: 'POP', color: '#ef4444', deviceLabel: 'POP ART COMIC DOTS', cssFilter: 'contrast(1.48) saturate(1.65) brightness(1.05)', pixelEffect: 'posterize', halftoneColor: true, vignette: 0.18, grain: 0.10 },
+      { id: 'risograph', category: 'artistik', name: 'Risograph', tag: 'RISO', color: '#ec4899', deviceLabel: 'RISOGRAPH ZINE PRINT', cssFilter: 'grayscale(1) contrast(1.42) brightness(1.04)', risograph: true, paperTexture: 'matte', vignette: 0.22, grain: 0.30 },
+      { id: 'ukir_kayu', category: 'artistik', name: 'Ukir Kayu', tag: 'WOOD', color: '#18181b', deviceLabel: 'WOODCUT ETCHING PRINT', cssFilter: 'grayscale(1) contrast(1.8)', pixelEffect: 'woodcut', paperTexture: 'parchment', vignette: 0.30, grain: 0.20 }
+    ];
+
+    /**
+     * ============================================================================
+     * STATE APLIKASI
+     * ============================================================================
+     */
+    const state = {
+      mode: 'camera', // 'camera' | 'upload'
+      isCaptured: false,
+      facingMode: 'environment', // 'user' | 'environment'
+      mirror: false,
+      timerSeconds: 0, // 0, 3, 5
+      isCountingDown: false,
+      activeCategory: 'all',
+      searchQuery: '',
+      activeFilter: FILTERS[0],
+      stream: null,
+      uploadedImage: null,
+      capturedImage: null,
+      adjustments: {
+        brightness: 0,
+        exposure: 0,
+        contrast: 0,
+        saturation: 0,
+        warmth: 0,
+        vignette: 0,
+        grain: 0
+      },
+      watermark: {
+        enabled: true,
+        preset: 'date98',
+        customText: "'98 11 20",
+        style: 'retroOrange',
+        position: 'bottom-right',
+        forcePolaroid: false,
+        filmSprocket: false
+      }
+    };
+
+    // Elemen DOM
+    const video = document.getElementById('videoSource');
+    const canvas = document.getElementById('previewCanvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const offCanvas = document.createElement('canvas');
+    const offCtx = offCanvas.getContext('2d', { willReadFrequently: true });
+
+    // ============================================================================
+    // GENERATOR TEKSTUR PROSEDURAL (GRAIN, KERTAS, CRAYON, HALFTONE, CRT)
+    // ============================================================================
+    const textures = {};
+
+    (function buildProceduralTextures() {
+      // 1. Film Grain Texture
+      const gC = document.createElement('canvas');
+      gC.width = 256; gC.height = 256;
+      const gCtx = gC.getContext('2d');
+      const gData = gCtx.createImageData(256, 256);
+      for (let i = 0; i < gData.data.length; i += 4) {
+        const val = Math.random() * 255;
+        gData.data[i] = val; gData.data[i + 1] = val; gData.data[i + 2] = val; gData.data[i + 3] = 52;
+      }
+      gCtx.putImageData(gData, 0, 0);
+      textures.grain = gC;
+
+      // 2. Kertas Kusut & Serat Kertas (Crumpled / Parchment / Matte / Watercolor)
+      const pC = document.createElement('canvas');
+      pC.width = 300; pC.height = 300;
+      const pCtx = pC.getContext('2d');
+      pCtx.fillStyle = '#e8dfd1';
+      pCtx.fillRect(0, 0, 300, 300);
+      // Serat kertas acak
+      for (let i = 0; i < 450; i++) {
+        pCtx.strokeStyle = i % 2 === 0 ? 'rgba(90, 70, 50, 0.14)' : 'rgba(255, 255, 255, 0.25)';
+        pCtx.lineWidth = Math.random() * 1.4;
+        pCtx.beginPath();
+        const x = Math.random() * 300, y = Math.random() * 300;
+        pCtx.moveTo(x, y);
+        pCtx.lineTo(x + (Math.random() - 0.5) * 45, y + (Math.random() - 0.5) * 45);
+        pCtx.stroke();
+      }
+      // Lipatan kusut
+      for (let i = 0; i < 35; i++) {
+        pCtx.strokeStyle = 'rgba(70, 55, 40, 0.18)';
+        pCtx.lineWidth = 1.2;
+        pCtx.beginPath();
+        let cx = Math.random() * 300, cy = Math.random() * 300;
+        pCtx.moveTo(cx, cy);
+        for (let s = 0; s < 4; s++) {
+          cx += (Math.random() - 0.5) * 80;
+          cy += (Math.random() - 0.5) * 80;
+          pCtx.lineTo(cx, cy);
+        }
+        pCtx.stroke();
+      }
+      textures.paper = pC;
+
+      // 3. Tekstur Crayon / Kanvas Lilin
+      const cC = document.createElement('canvas');
+      cC.width = 200; cC.height = 200;
+      const cCtx = cC.getContext('2d');
+      for (let i = 0; i < 900; i++) {
+        cCtx.fillStyle = i % 2 === 0 ? 'rgba(255,255,255,0.22)' : 'rgba(30,30,35,0.16)';
+        const x = Math.random() * 200, y = Math.random() * 200;
+        cCtx.fillRect(x, y, 2 + Math.random() * 4, 1 + Math.random() * 2);
+      }
+      textures.crayon = cC;
+
+      // 4. Pola Titik Halftone (Koran & Komik Pop Art)
+      const hC = document.createElement('canvas');
+      hC.width = 12; hC.height = 12;
+      const hCtx = hC.getContext('2d');
+      hCtx.fillStyle = 'rgba(15, 15, 20, 0.28)';
+      hCtx.beginPath();
+      hCtx.arc(3, 3, 2.1, 0, Math.PI * 2);
+      hCtx.arc(9, 9, 2.1, 0, Math.PI * 2);
+      hCtx.fill();
+      textures.halftone = hC;
+
+      // 5. Pola Grid Blueprint Arsitektur
+      const bC = document.createElement('canvas');
+      bC.width = 40; bC.height = 40;
+      const bCtx = bC.getContext('2d');
+      bCtx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
+      bCtx.lineWidth = 1;
+      bCtx.strokeRect(0, 0, 40, 40);
+      bCtx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+      bCtx.beginPath();
+      bCtx.moveTo(20, 0); bCtx.lineTo(20, 40);
+      bCtx.moveTo(0, 20); bCtx.lineTo(40, 20);
+      bCtx.stroke();
+      textures.blueprintGrid = bC;
+    })();
+
+    /**
+     * ============================================================================
+     * FUNGSI NOTIFIKASI TOAST
+     * ============================================================================
+     */
+    let toastTimeout;
+    function showToast(message, iconClass = 'fa-circle-info text-amber-400') {
+      const box = document.getElementById('toastBox');
+      const text = document.getElementById('toastText');
+      const icon = document.getElementById('toastIcon');
+      text.textContent = message;
+      icon.className = `fa-solid ${iconClass}`;
+      box.classList.remove('opacity-0', '-translate-y-4');
+      box.classList.add('opacity-100', 'translate-y-0');
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        box.classList.remove('opacity-100', 'translate-y-0');
+        box.classList.add('opacity-0', '-translate-y-4');
+      }, 2600);
+    }
+
+    /**
+     * ============================================================================
+     * INISIALISASI KAMERA WEBRTC
+     * ============================================================================
+     */
+    async function startCamera() {
+      stopCamera();
+      document.getElementById('cameraFallback').classList.add('hidden');
+      try {
+        const constraints = {
+          audio: false,
+          video: {
+            facingMode: state.facingMode,
+            width: { ideal: 1280 },
+            height: { ideal: 960 }
+          }
+        };
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        state.stream = stream;
+        video.srcObject = stream;
+        await video.play();
+
+        // Otomatis mirror jika kamera depan
+        state.mirror = (state.facingMode === 'user');
+        document.getElementById('liveIndicator').innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> LIVE SENSOR`;
+        document.getElementById('resolutionBadge').textContent = `${video.videoWidth || 1280}x${video.videoHeight || 720}`;
+      } catch (err) {
+        console.warn('Kamera tidak tersedia:', err);
+        document.getElementById('cameraFallback').classList.remove('hidden');
+        document.getElementById('liveIndicator').innerHTML = `<span class="w-2 h-2 rounded-full bg-rose-500"></span> STANDBY`;
+      }
+    }
+
+    function stopCamera() {
+      if (state.stream) {
+        state.stream.getTracks().forEach(track => track.stop());
+        state.stream = null;
+      }
+    }
+
+    /**
+     * ============================================================================
+     * RENDER ENGINE UTAMA (FILTER, PENCAHAYAAN, BINGKAI POLAROID, WATERMARK)
+     * ============================================================================
+     */
+    function getSourceMedia() {
+      if (state.mode === 'upload' && state.uploadedImage) {
+        return { el: state.uploadedImage, w: state.uploadedImage.naturalWidth, h: state.uploadedImage.naturalHeight, isVideo: false };
+      }
+      if (state.isCaptured && state.capturedImage) {
+        return { el: state.capturedImage, w: state.capturedImage.naturalWidth, h: state.capturedImage.naturalHeight, isVideo: false };
+      }
+      if (video.readyState >= 2 && video.videoWidth > 0) {
+        return { el: video, w: video.videoWidth, h: video.videoHeight, isVideo: true };
+      }
+      return null;
+    }
+
+    function buildCombinedFilterString(filter, adj) {
+      const parts = [];
+      if (filter.cssFilter && filter.cssFilter !== 'none') {
+        parts.push(filter.cssFilter);
+      }
+
+      // Penyesuaian manual dari slider
+      const bright = 1 + (adj.brightness / 100) + (adj.exposure / 120);
+      const cont = 1 + (adj.contrast / 100);
+      const sat = Math.max(0, 1 + (adj.saturation / 100));
+
+      if (Math.abs(bright - 1) > 0.005) parts.push(`brightness(${bright.toFixed(3)})`);
+      if (Math.abs(cont - 1) > 0.005) parts.push(`contrast(${cont.toFixed(3)})`);
+      if (Math.abs(sat - 1) > 0.005) parts.push(`saturate(${sat.toFixed(3)})`);
+
+      if (adj.warmth > 0) {
+        parts.push(`sepia(${(adj.warmth / 120).toFixed(3)})`);
+      } else if (adj.warmth < 0) {
+        parts.push(`hue-rotate(${(adj.warmth * 0.45).toFixed(1)}deg)`);
+      }
+
+      return parts.length > 0 ? parts.join(' ') : 'none';
+    }
+
+    /**
+     * Pemrosesan Piksel Artistik (Sketsa Pensil, Ukir Kayu, Posterize Cat Minyak/Komik)
+     */
+    function applyArtisticPixelEffect(targetCtx, x, y, w, h, effectType) {
+      // Gunakan resolusi kerja yang cepat agar 60fps tetap responsif di HP
+      const workScale = Math.min(1, 360 / Math.max(w, h));
+      const pw = Math.max(64, Math.round(w * workScale));
+      const ph = Math.max(64, Math.round(h * workScale));
+
+      offCanvas.width = pw;
+      offCanvas.height = ph;
+      offCtx.drawImage(targetCtx.canvas, x, y, w, h, 0, 0, pw, ph);
+
+      const imgData = offCtx.getImageData(0, 0, pw, ph);
+      const d = imgData.data;
+
+      if (effectType === 'posterize') {
+        // Kuantisasi warna ala Cat Minyak / Komik Pop Art
+        const levels = 5;
+        const step = 255 / (levels - 1);
+        for (let i = 0; i < d.length; i += 4) {
+          d[i] = Math.round(d[i] / step) * step;
+          d[i + 1] = Math.round(d[i + 1] / step) * step;
+          d[i + 2] = Math.round(d[i + 2] / step) * step;
+        }
+        offCtx.putImageData(imgData, 0, 0);
+      } else if (effectType === 'sketch' || effectType === 'woodcut') {
+        // Deteksi tepi (Sobel/Gradient sederhana) untuk Sketsa Pensil & Ukir Kayu
+        const gray = new Uint8ClampedArray(pw * ph);
+        for (let i = 0, p = 0; i < d.length; i += 4, p++) {
+          gray[p] = (d[i] * 0.3 + d[i + 1] * 0.59 + d[i + 2] * 0.11);
+        }
+        const out = offCtx.createImageData(pw, ph);
+        const od = out.data;
+        const isWood = (effectType === 'woodcut');
+
+        for (let py = 1; py < ph - 1; py++) {
+          for (let px = 1; px < pw - 1; px++) {
+            const idx = py * pw + px;
+            const gx = Math.abs(gray[idx + 1] - gray[idx - 1]);
+            const gy = Math.abs(gray[idx + pw] - gray[idx - pw]);
+            const edge = Math.min(255, (gx + gy) * (isWood ? 3.2 : 2.4));
+            const outIdx = idx * 4;
+
+            if (isWood) {
+              // Kontras hitam putih ukir kayu tajam
+              const val = (gray[idx] - edge * 0.9) > 105 ? 245 : 22;
+              od[outIdx] = val; od[outIdx + 1] = val; od[outIdx + 2] = val; od[outIdx + 3] = 255;
+            } else {
+              // Garis grafit di atas kertas putih terang
+              const tone = Math.max(25, Math.min(250, 250 - edge * 1.15 - (255 - gray[idx]) * 0.18));
+              od[outIdx] = tone; od[outIdx + 1] = tone; od[outIdx + 2] = tone; od[outIdx + 3] = 255;
+            }
+          }
+        }
+        offCtx.putImageData(out, 0, 0);
+      }
+
+      targetCtx.drawImage(offCanvas, 0, 0, pw, ph, x, y, w, h);
+    }
+
+    function renderFrameToCanvas(targetCanvas, targetCtx, isExport = false) {
+      const src = getSourceMedia();
+      if (!src) return;
+
+      const f = state.activeFilter;
+      const adj = state.adjustments;
+      const isPolaroid = Boolean(f.forcePolaroid || state.watermark.forcePolaroid);
+      const isSprocket = Boolean(state.watermark.filmSprocket && !isPolaroid);
+
+      // Batasi resolusi preview agar ringan, gunakan resolusi penuh saat export
+      let imgW = src.w;
+      let imgH = src.h;
+      const maxDim = isExport ? 1920 : 880;
+      if (Math.max(imgW, imgH) > maxDim) {
+        const scale = maxDim / Math.max(imgW, imgH);
+        imgW = Math.round(imgW * scale);
+        imgH = Math.round(imgH * scale);
+      }
+
+      // Hitung dimensi bingkai jika mode Polaroid atau Sprocket Film aktif
+      let padSide = 0, padTop = 0, padBottom = 0;
+      if (isPolaroid) {
+        padSide = Math.round(imgW * 0.065);
+        padTop = Math.round(imgW * 0.065);
+        padBottom = Math.round(imgW * 0.22);
+      } else if (isSprocket) {
+        padSide = Math.round(imgW * 0.085);
+        padTop = Math.round(imgH * 0.03);
+        padBottom = Math.round(imgH * 0.03);
+      }
+
+      const totalW = imgW + padSide * 2;
+      const totalH = imgH + padTop + padBottom;
+
+      if (targetCanvas.width !== totalW || targetCanvas.height !== totalH) {
+        targetCanvas.width = totalW;
+        targetCanvas.height = totalH;
+      }
+
+      targetCtx.save();
+
+      // 1. Gambar Bingkai Polaroid atau Bingkai Roll Film 35mm
+      if (isPolaroid) {
+        targetCtx.fillStyle = '#f6f5f0';
+        targetCtx.fillRect(0, 0, totalW, totalH);
+        targetCtx.strokeStyle = 'rgba(0,0,0,0.12)';
+        targetCtx.lineWidth = Math.max(1, Math.round(imgW * 0.003));
+        targetCtx.strokeRect(padSide - 1, padTop - 1, imgW + 2, imgH + 2);
+      } else if (isSprocket) {
+        targetCtx.fillStyle = '#14110f';
+        targetCtx.fillRect(0, 0, totalW, totalH);
+        // Lubang sprocket di sisi kiri dan kanan
+        const holeW = Math.round(padSide * 0.45);
+        const holeH = Math.round(holeW * 1.35);
+        const gap = Math.round(holeH * 1.9);
+        targetCtx.fillStyle = '#f4f4f5';
+        for (let hy = Math.round(gap * 0.5); hy < totalH - holeH; hy += gap) {
+          targetCtx.beginPath();
+          targetCtx.roundRect(Math.round((padSide - holeW) / 2), hy, holeW, holeH, 3);
+          targetCtx.roundRect(totalW - padSide + Math.round((padSide - holeW) / 2), hy, holeW, holeH, 3);
+          targetCtx.fill();
+        }
+      } else {
+        targetCtx.clearRect(0, 0, totalW, totalH);
+      }
+
+      // Area klip gambar utama
+      targetCtx.beginPath();
+      targetCtx.rect(padSide, padTop, imgW, imgH);
+      targetCtx.clip();
+
+      // 2. Gambar sumber (dengan efek pixelate jika filter Low Pixel / Nokia Low MP / Android / J1 / Webcam)
+      const combinedCSS = buildCombinedFilterString(f, adj);
+
+      if (f.pixelate && f.pixelate < 1) {
+        const pw = Math.max(48, Math.round(imgW * f.pixelate));
+        const ph = Math.max(48, Math.round(imgH * f.pixelate));
+        offCanvas.width = pw;
+        offCanvas.height = ph;
+        offCtx.save();
+        offCtx.filter = combinedCSS;
+        if (src.isVideo && state.mirror) {
+          offCtx.translate(pw, 0);
+          offCtx.scale(-1, 1);
+        }
+        offCtx.drawImage(src.el, 0, 0, pw, ph);
+        offCtx.restore();
+
+        targetCtx.imageSmoothingEnabled = false;
+        targetCtx.drawImage(offCanvas, padSide, padTop, imgW, imgH);
+        targetCtx.imageSmoothingEnabled = true;
+      } else {
+        targetCtx.save();
+        targetCtx.filter = combinedCSS;
+        if (src.isVideo && state.mirror) {
+          targetCtx.translate(padSide + imgW, padTop);
+          targetCtx.scale(-1, 1);
+          targetCtx.drawImage(src.el, 0, 0, imgW, imgH);
+        } else {
+          targetCtx.drawImage(src.el, padSide, padTop, imgW, imgH);
+        }
+        targetCtx.restore();
+      }
+
+      // 2b. Pemrosesan Piksel Artistik (Sketsa Pensil, Ukir Kayu, Posterize)
+      if (f.pixelEffect) {
+        applyArtisticPixelEffect(targetCtx, padSide, padTop, imgW, imgH, f.pixelEffect);
+      }
+
+      // 3. Efek Khusus: NightShot IR (Green Night Vision)
+      if (f.nightVision) {
+        targetCtx.save();
+        targetCtx.globalCompositeOperation = 'multiply';
+        targetCtx.fillStyle = '#22ff55';
+        targetCtx.fillRect(padSide, padTop, imgW, imgH);
+        targetCtx.globalCompositeOperation = 'screen';
+        targetCtx.fillStyle = 'rgba(0, 95, 25, 0.45)';
+        targetCtx.fillRect(padSide, padTop, imgW, imgH);
+        targetCtx.restore();
+      }
+
+      // 3b. Efek Khusus: Blueprint Cyanotype
+      if (f.blueprint) {
+        targetCtx.save();
+        targetCtx.globalCompositeOperation = 'multiply';
+        targetCtx.fillStyle = '#1d4ed8';
+        targetCtx.fillRect(padSide, padTop, imgW, imgH);
+        targetCtx.globalCompositeOperation = 'screen';
+        targetCtx.fillStyle = 'rgba(20, 75, 195, 0.55)';
+        targetCtx.fillRect(padSide, padTop, imgW, imgH);
+        targetCtx.restore();
+      }
+
+      // 3c. Efek Khusus: Risograph Print (Dua Warna Tinta Merah-Biru Zine)
+      if (f.risograph) {
+        targetCtx.save();
+        targetCtx.globalCompositeOperation = 'multiply';
+        targetCtx.fillStyle = '#ff4d8d';
+        targetCtx.fillRect(padSide, padTop, imgW, imgH);
+        targetCtx.globalCompositeOperation = 'screen';
+        targetCtx.fillStyle = 'rgba(35, 65, 190, 0.45)';
+        targetCtx.fillRect(padSide, padTop, imgW, imgH);
+        targetCtx.restore();
+      }
+
+      // 4. Efek Bloom lembut ala Digicam 2004 / IXUS
+      if (f.bloom) {
+        targetCtx.save();
+        targetCtx.globalCompositeOperation = 'screen';
+        targetCtx.globalAlpha = 0.25;
+        targetCtx.filter = 'blur(10px) brightness(1.3)';
+        targetCtx.drawImage(targetCanvas, padSide, padTop, imgW, imgH, padSide, padTop, imgW, imgH);
+        targetCtx.restore();
+      }
+
+      // 5. Tint warna khas filter & Suhu warna manual
+      if (f.tint) {
+        targetCtx.fillStyle = f.tint;
+        targetCtx.fillRect(padSide, padTop, imgW, imgH);
+      }
+      if (adj.warmth > 0) {
+        targetCtx.fillStyle = `rgba(255, 165, 50, ${(adj.warmth / 320).toFixed(3)})`;
+        targetCtx.fillRect(padSide, padTop, imgW, imgH);
+      } else if (adj.warmth < 0) {
+        targetCtx.fillStyle = `rgba(60, 150, 255, ${(Math.abs(adj.warmth) / 300).toFixed(3)})`;
+        targetCtx.fillRect(padSide, padTop, imgW, imgH);
+      }
+
+      // 6. Gradasi Senja / Sinematik Teal & Orange / CineStill
+      if (f.gradientOverlay) {
+        const grad = targetCtx.createLinearGradient(padSide, padTop, padSide + imgW, padTop + imgH);
+        grad.addColorStop(0, f.gradientOverlay[0]);
+        grad.addColorStop(1, f.gradientOverlay[1]);
+        targetCtx.fillStyle = grad;
+        targetCtx.fillRect(padSide, padTop, imgW, imgH);
+      }
+
+      // 7. Efek Light Leak Oranye/Merah pada Roll Vintage 2000y
+      if (f.lightLeak) {
+        targetCtx.save();
+        targetCtx.globalCompositeOperation = 'screen';
+        const leakGrad = targetCtx.createLinearGradient(padSide, padTop, padSide + imgW * 0.45, padTop + imgH * 0.6);
+        leakGrad.addColorStop(0, 'rgba(255, 65, 20, 0.55)');
+        leakGrad.addColorStop(0.45, 'rgba(255, 165, 30, 0.28)');
+        leakGrad.addColorStop(1, 'rgba(255, 100, 0, 0)');
+        targetCtx.fillStyle = leakGrad;
+        targetCtx.fillRect(padSide, padTop, imgW, imgH);
+        targetCtx.restore();
+      }
+
+      // 8. Tekstur Kertas (Koran, Kusut, Parchment, Matte, Watercolor, Blueprint Grid)
+      if (f.paperTexture) {
+        targetCtx.save();
+        if (f.paperTexture === 'grid') {
+          targetCtx.fillStyle = targetCtx.createPattern(textures.blueprintGrid, 'repeat');
+          targetCtx.fillRect(padSide, padTop, imgW, imgH);
+        } else {
+          targetCtx.globalCompositeOperation = 'multiply';
+          targetCtx.globalAlpha = f.paperTexture === 'crumpled' ? 0.42 : (f.paperTexture === 'parchment' ? 0.36 : 0.22);
+          targetCtx.fillStyle = targetCtx.createPattern(textures.paper, 'repeat');
+          targetCtx.fillRect(padSide, padTop, imgW, imgH);
+        }
+        targetCtx.restore();
+      }
+
+      // 9. Tekstur Crayon / Cat Minyak & Titik Halftone Koran/Komik
+      if (f.crayonTexture) {
+        targetCtx.save();
+        targetCtx.globalCompositeOperation = 'overlay';
+        targetCtx.globalAlpha = f.crayonTexture === 'wax' ? 0.55 : 0.42;
+        targetCtx.fillStyle = targetCtx.createPattern(textures.crayon, 'repeat');
+        targetCtx.fillRect(padSide, padTop, imgW, imgH);
+        targetCtx.restore();
+      }
+
+      if (f.halftone || f.halftoneColor) {
+        targetCtx.save();
+        targetCtx.globalCompositeOperation = f.halftoneColor ? 'overlay' : 'multiply';
+        targetCtx.globalAlpha = f.halftoneColor ? 0.45 : 0.55;
+        targetCtx.fillStyle = targetCtx.createPattern(textures.halftone, 'repeat');
+        targetCtx.fillRect(padSide, padTop, imgW, imgH);
+        targetCtx.restore();
+      }
+
+      // 10. Efek Handcam Variatif (VHS Tracking, CRT RGB, Super 8 Dust, Scanlines, HUD)
+      if (f.vhsTracking) {
+        targetCtx.save();
+        const bandY = padTop + ((isExport ? 0.72 : ((Date.now() / 2200) % 1)) * imgH);
+        targetCtx.fillStyle = 'rgba(255, 255, 255, 0.16)';
+        targetCtx.fillRect(padSide, bandY, imgW, Math.max(4, Math.round(imgH * 0.025)));
+        targetCtx.fillStyle = 'rgba(255, 40, 80, 0.12)';
+        targetCtx.fillRect(padSide, bandY + 3, imgW, 3);
+        targetCtx.restore();
+      }
+
+      if (f.crtRgb) {
+        targetCtx.save();
+        const stripeW = 4;
+        for (let sx = padSide; sx < padSide + imgW; sx += stripeW * 3) {
+          targetCtx.fillStyle = 'rgba(255,0,0,0.07)'; targetCtx.fillRect(sx, padTop, stripeW, imgH);
+          targetCtx.fillStyle = 'rgba(0,255,0,0.07)'; targetCtx.fillRect(sx + stripeW, padTop, stripeW, imgH);
+          targetCtx.fillStyle = 'rgba(0,120,255,0.07)'; targetCtx.fillRect(sx + stripeW * 2, padTop, stripeW, imgH);
+        }
+        targetCtx.restore();
+      }
+
+      if (f.filmDust) {
+        targetCtx.save();
+        targetCtx.strokeStyle = 'rgba(255, 245, 220, 0.24)';
+        targetCtx.lineWidth = 1;
+        const seedX = isExport ? imgW * 0.28 : ((Date.now() * 0.17) % imgW);
+        targetCtx.beginPath();
+        targetCtx.moveTo(padSide + seedX, padTop);
+        targetCtx.lineTo(padSide + seedX + 3, padTop + imgH);
+        targetCtx.stroke();
+        targetCtx.restore();
+      }
+
+      if (f.scanlines) {
+        targetCtx.fillStyle = 'rgba(0, 0, 0, 0.17)';
+        const step = Math.max(3, Math.round(imgH / 160));
+        for (let y = padTop; y < padTop + imgH; y += step) {
+          targetCtx.fillRect(padSide, y, imgW, Math.max(1, Math.floor(step / 2)));
+        }
+      }
+
+      if (f.recHud) {
+        const hudSize = Math.max(14, Math.round(imgW * 0.032));
+        targetCtx.font = `bold ${hudSize}px "VT323", monospace`;
+        targetCtx.fillStyle = f.nightVision ? '#4ade80' : '#ef4444';
+        targetCtx.shadowColor = 'rgba(0,0,0,0.85)';
+        targetCtx.shadowBlur = 4;
+        const blink = Math.floor(Date.now() / 550) % 2 === 0;
+        if (blink || isExport) {
+          targetCtx.fillText('● REC', padSide + imgW * 0.04, padTop + imgH * 0.07);
+        }
+        targetCtx.fillStyle = f.nightVision ? '#86efac' : '#f4f4f5';
+        targetCtx.fillText(f.hudText || 'SP  00:14:28', padSide + imgW * 0.04, padTop + imgH * 0.12);
+        targetCtx.shadowBlur = 0;
+      }
+
+      // 11. Vignette (Gabungan dari preset filter + slider manual)
+      const totalVignette = Math.min(0.95, (f.vignette || 0) + (adj.vignette / 100));
+      if (totalVignette > 0.02) {
+        const cx = padSide + imgW / 2;
+        const cy = padTop + imgH / 2;
+        const radius = Math.hypot(imgW / 2, imgH / 2);
+        const vigGrad = targetCtx.createRadialGradient(cx, cy, radius * 0.42, cx, cy, radius);
+        vigGrad.addColorStop(0, 'rgba(0,0,0,0)');
+        vigGrad.addColorStop(1, `rgba(0,0,0,${totalVignette.toFixed(2)})`);
+        targetCtx.fillStyle = vigGrad;
+        targetCtx.fillRect(padSide, padTop, imgW, imgH);
+      }
+
+      // 12. Film Grain / Noise Texture
+      const totalGrain = Math.min(1, (f.grain || 0) + (adj.grain / 100));
+      if (totalGrain > 0.02) {
+        targetCtx.save();
+        targetCtx.globalAlpha = totalGrain * 0.65;
+        targetCtx.globalCompositeOperation = 'overlay';
+        const pat = targetCtx.createPattern(textures.grain, 'repeat');
+        targetCtx.fillStyle = pat;
+        const shiftX = isExport ? 0 : (Math.random() * 128);
+        const shiftY = isExport ? 0 : (Math.random() * 128);
+        targetCtx.translate(shiftX, shiftY);
+        targetCtx.fillRect(padSide - shiftX, padTop - shiftY, imgW + 128, imgH + 128);
+        targetCtx.restore();
+      }
+
+      // 13. Letterbox Sinematik (Bar hitam atas bawah)
+      if (f.letterbox && !isPolaroid) {
+        const barH = Math.round(imgH * 0.11);
+        targetCtx.fillStyle = '#09090b';
+        targetCtx.fillRect(padSide, padTop, imgW, barH);
+        targetCtx.fillRect(padSide, padTop + imgH - barH, imgW, barH);
+      }
+
+      targetCtx.restore(); // Lepas klip area gambar
+
+      // 14. Render Watermark atau Tulisan Tangan Bawah Polaroid
+      renderWatermark(targetCtx, padSide, padTop, imgW, imgH, totalW, totalH, isPolaroid);
+    }
+
+    function getWatermarkText() {
+      const preset = state.watermark.preset;
+      const custom = state.watermark.customText.trim();
+      if (preset === 'custom') return custom || 'LENSARETRO';
+      if (preset === 'autoDevice') return state.activeFilter.deviceLabel;
+      return custom || "'98 11 20";
+    }
+
+    function renderWatermark(targetCtx, padSide, padTop, imgW, imgH, totalW, totalH, isPolaroid) {
+      if (!state.watermark.enabled) return;
+      const text = getWatermarkText();
+      if (!text) return;
+
+      targetCtx.save();
+
+      // Jika bingkai Polaroid aktif, tulis catatan estetik di area putih bagian bawah
+      if (isPolaroid) {
+        const fontSize = Math.max(18, Math.round(imgW * 0.052));
+        targetCtx.font = `600 ${fontSize}px "Caveat", cursive`;
+        targetCtx.fillStyle = '#27272a';
+        targetCtx.textAlign = 'center';
+        targetCtx.textBaseline = 'middle';
+        const bottomCenterY = padTop + imgH + (totalH - (padTop + imgH)) * 0.52;
+        targetCtx.fillText(text, totalW / 2, bottomCenterY);
+        targetCtx.restore();
+        return;
+      }
+
+      // Gaya Watermark di dalam foto
+      const style = state.watermark.style;
+      const pos = state.watermark.position;
+      const marginX = Math.round(imgW * 0.04);
+      const marginY = Math.round(imgH * 0.045) + (state.activeFilter.letterbox ? Math.round(imgH * 0.11) : 0);
+
+      let fontSize = Math.max(14, Math.round(imgW * 0.034));
+      if (style === 'retroOrange' || style === 'retroRed') {
+        targetCtx.font = `bold ${Math.round(fontSize * 1.25)}px "VT323", monospace`;
+      } else {
+        targetCtx.font = `700 ${Math.round(fontSize * 0.85)}px "JetBrains Mono", monospace`;
+      }
+
+      if (style === 'retroOrange') {
+        targetCtx.fillStyle = '#ff7b1c';
+        targetCtx.shadowColor = 'rgba(255, 90, 0, 0.85)';
+        targetCtx.shadowBlur = 8;
+      } else if (style === 'retroRed') {
+        targetCtx.fillStyle = '#ff3b3b';
+        targetCtx.shadowColor = 'rgba(255, 20, 20, 0.85)';
+        targetCtx.shadowBlur = 8;
+      } else if (style === 'yellowSub') {
+        targetCtx.fillStyle = '#facc15';
+        targetCtx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+        targetCtx.shadowBlur = 4;
+      } else {
+        targetCtx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        targetCtx.shadowColor = 'rgba(0, 0, 0, 0.75)';
+        targetCtx.shadowBlur = 5;
+      }
+
+      let x = padSide + imgW - marginX;
+      let y = padTop + imgH - marginY;
+      targetCtx.textAlign = 'right';
+      targetCtx.textBaseline = 'bottom';
+
+      if (pos === 'bottom-left') {
+        x = padSide + marginX;
+        targetCtx.textAlign = 'left';
+      } else if (pos === 'top-left') {
+        x = padSide + marginX;
+        y = padTop + marginY;
+        targetCtx.textAlign = 'left';
+        targetCtx.textBaseline = 'top';
+      } else if (pos === 'top-right') {
+        x = padSide + imgW - marginX;
+        y = padTop + marginY;
+        targetCtx.textAlign = 'right';
+        targetCtx.textBaseline = 'top';
+      }
+
+      targetCtx.fillText(text, x, y);
+      targetCtx.restore();
+    }
+
+    // Loop Animasi Utama
+    function animationLoop() {
+      renderFrameToCanvas(canvas, ctx, false);
+      requestAnimationFrame(animationLoop);
+    }
+
+    /**
+     * ============================================================================
+     * RENDER DAFTAR 73 FILTER DENGAN KATEGORI & PENCARIAN KE UI
+     * ============================================================================
+     */
+    function buildFilterGrid() {
+      const grid = document.getElementById('filterGrid');
+      grid.innerHTML = '';
+
+      const query = state.searchQuery.trim().toLowerCase();
+      const filteredList = FILTERS.filter((f) => {
+        const matchCat = state.activeCategory === 'all' || f.category === state.activeCategory;
+        const matchQuery = !query || f.name.toLowerCase().includes(query) || f.tag.toLowerCase().includes(query) || f.deviceLabel.toLowerCase().includes(query);
+        return matchCat && matchQuery;
+      });
+
+      if (filteredList.length === 0) {
+        grid.innerHTML = `<div class="col-span-full text-center py-8 text-xs text-zinc-500">Filter "<span class="text-zinc-300">${state.searchQuery}</span>" tidak ditemukan.</div>`;
+        return;
+      }
+
+      filteredList.forEach((filter) => {
+        const btn = document.createElement('button');
+        const isActive = state.activeFilter.id === filter.id;
+        btn.className = `filter-card group relative flex flex-col items-start justify-between p-2 rounded-xl border text-left transition-all ${
+          isActive
+            ? 'bg-zinc-800 border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.2)]'
+            : 'bg-zinc-900/80 border-zinc-800 hover:border-zinc-700 hover:bg-zinc-800/60'
+        }`;
+        btn.dataset.filterId = filter.id;
+
+        btn.innerHTML = `
+          <div class="w-full flex items-center justify-between mb-1.5">
+            <span class="w-3 h-3 rounded-full shadow-inner shrink-0" style="background:${filter.color}"></span>
+            <span class="text-[9px] font-mono-tech px-1.5 py-0.5 rounded bg-zinc-950/80 text-zinc-400 border border-zinc-800">${filter.tag}</span>
+          </div>
+          <div class="w-full">
+            <div class="text-[11px] font-semibold leading-tight truncate ${isActive ? 'text-amber-400' : 'text-zinc-200'}">${filter.name}</div>
+          </div>
+        `;
+
+        btn.addEventListener('click', () => {
+          state.activeFilter = filter;
+          document.getElementById('activeFilterBadge').textContent = filter.name;
+
+          if (state.watermark.preset === 'autoDevice') {
+            document.getElementById('wmCustomText').value = filter.deviceLabel;
+            state.watermark.customText = filter.deviceLabel;
+          }
+
+          updateFilterGridSelection();
+        });
+
+        grid.appendChild(btn);
+      });
+    }
+
+    function updateFilterGridSelection() {
+      document.querySelectorAll('.filter-card').forEach((card) => {
+        const isMatch = card.dataset.filterId === state.activeFilter.id;
+        const titleEl = card.querySelector('.truncate');
+        if (isMatch) {
+          card.className = 'filter-card group relative flex flex-col items-start justify-between p-2 rounded-xl border text-left transition-all bg-zinc-800 border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.2)]';
+          if (titleEl) titleEl.classList.replace('text-zinc-200', 'text-amber-400');
+        } else {
+          card.className = 'filter-card group relative flex flex-col items-start justify-between p-2 rounded-xl border text-left transition-all bg-zinc-900/80 border-zinc-800 hover:border-zinc-700 hover:bg-zinc-800/60';
+          if (titleEl) titleEl.classList.replace('text-amber-400', 'text-zinc-200');
+        }
+      });
+    }
+
+    /**
+     * ============================================================================
+     * KONTROL SHUTTER, TIMER, CAPTURE & DOWNLOAD HD
+     * ============================================================================
+     */
+    function triggerFlashEffect() {
+      const flash = document.getElementById('flashOverlay');
+      flash.classList.remove('flash-active');
+      void flash.offsetWidth; // trigger reflow
+      flash.classList.add('flash-active');
+    }
+
+    function capturePhotoNow() {
+      const src = getSourceMedia();
+      if (!src) {
+        showToast('Tidak ada gambar atau kamera aktif untuk dijepret.', 'fa-triangle-exclamation text-rose-400');
+        return;
+      }
+
+      triggerFlashEffect();
+
+      // Tangkap frame mentah dari video ke Image agar bisa diedit filter & cahayanya berulang kali
+      if (src.isVideo) {
+        const tempCap = document.createElement('canvas');
+        tempCap.width = src.w;
+        tempCap.height = src.h;
+        const tCtx = tempCap.getContext('2d');
+        if (state.mirror) {
+          tCtx.translate(src.w, 0);
+          tCtx.scale(-1, 1);
+        }
+        tCtx.drawImage(video, 0, 0, src.w, src.h);
+
+        const img = new Image();
+        img.onload = () => {
+          state.capturedImage = img;
+          state.isCaptured = true;
+          document.getElementById('btnRetake').classList.remove('hidden');
+          document.getElementById('btnRetake').classList.add('flex');
+          document.getElementById('liveIndicator').innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-400"></span> HASIL JEPRETAN`;
+          showToast('Foto dijepret! Silakan ganti filter atau simpan HD.', 'fa-camera text-amber-400');
+        };
+        img.src = tempCap.toDataURL('image/png');
+      } else {
+        showToast('Mode editor foto aktif. Klik Simpan HD untuk mengunduh.', 'fa-check text-emerald-400');
+      }
+    }
+
+    function handleShutterClick() {
+      if (state.isCountingDown) return;
+
+      // Jika sudah dalam status captured, tombol shutter mengembalikan ke live camera
+      if (state.mode === 'camera' && state.isCaptured) {
+        resetToLiveCamera();
+        return;
+      }
+
+      if (state.timerSeconds > 0 && state.mode === 'camera' && !state.isCaptured) {
+        state.isCountingDown = true;
+        let remaining = state.timerSeconds;
+        const overlay = document.getElementById('countdownOverlay');
+        const numEl = document.getElementById('countdownNumber');
+        overlay.classList.remove('hidden');
+        numEl.textContent = remaining;
+
+        const interval = setInterval(() => {
+          remaining -= 1;
+          if (remaining > 0) {
+            numEl.textContent = remaining;
+          } else {
+            clearInterval(interval);
+            overlay.classList.add('hidden');
+            state.isCountingDown = false;
+            capturePhotoNow();
+          }
+        }, 1000);
+      } else {
+        capturePhotoNow();
+      }
+    }
+
+    function resetToLiveCamera() {
+      state.isCaptured = false;
+      state.capturedImage = null;
+      document.getElementById('btnRetake').classList.add('hidden');
+      document.getElementById('btnRetake').classList.remove('flex');
+      document.getElementById('liveIndicator').innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> LIVE SENSOR`;
+    }
+
+    function downloadFinalPhoto() {
+      const src = getSourceMedia();
+      if (!src) {
+        showToast('Belum ada foto untuk diunduh.', 'fa-triangle-exclamation text-rose-400');
+        return;
+      }
+
+      const exportCanvas = document.createElement('canvas');
+      const exportCtx = exportCanvas.getContext('2d');
+      renderFrameToCanvas(exportCanvas, exportCtx, true);
+
+      const link = document.createElement('a');
+      const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+      link.download = `LensaRetro_${state.activeFilter.id}_${timestamp}.jpg`;
+      link.href = exportCanvas.toDataURL('image/jpeg', 0.94);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      showToast('Foto HD berhasil disimpan ke perangkat!', 'fa-circle-check text-emerald-400');
+    }
+
+    /**
+     * ============================================================================
+     * EVENT LISTENERS UI & KONTROL
+     * ============================================================================
+     */
+    function bindEvents() {
+      // Tab Studio (Filter / Cahaya / Watermark)
+      document.querySelectorAll('.studio-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          document.querySelectorAll('.studio-tab').forEach(t => {
+            t.classList.remove('bg-zinc-800', 'text-amber-400', 'shadow-sm');
+            t.classList.add('text-zinc-400');
+          });
+          tab.classList.add('bg-zinc-800', 'text-amber-400', 'shadow-sm');
+          tab.classList.remove('text-zinc-400');
+
+          document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+          document.getElementById(`tab-${tab.dataset.tab}`).classList.remove('hidden');
+        });
+      });
+
+      // Mode Switcher (Kamera vs Galeri)
+      const btnModeCamera = document.getElementById('btnModeCamera');
+      const btnModeUpload = document.getElementById('btnModeUpload');
+      const fileInput = document.getElementById('fileInput');
+
+      btnModeCamera.addEventListener('click', () => {
+        state.mode = 'camera';
+        resetToLiveCamera();
+        btnModeCamera.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all bg-amber-500 text-zinc-950 shadow';
+        btnModeUpload.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-zinc-400 hover:text-zinc-200';
+        document.getElementById('btnShutter').classList.remove('opacity-40', 'pointer-events-none');
+        startCamera();
+      });
+
+      btnModeUpload.addEventListener('click', () => {
+        fileInput.click();
+      });
+
+      document.getElementById('btnQuickUpload').addEventListener('click', () => fileInput.click());
+      document.getElementById('btnFallbackUpload').addEventListener('click', () => fileInput.click());
+      document.getElementById('btnRetryCamera').addEventListener('click', () => startCamera());
+
+      fileInput.addEventListener('change', (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const img = new Image();
+          img.onload = () => {
+            state.uploadedImage = img;
+            state.mode = 'upload';
+            state.isCaptured = false;
+            stopCamera();
+            document.getElementById('cameraFallback').classList.add('hidden');
+            document.getElementById('btnRetake').classList.add('hidden');
+            document.getElementById('btnShutter').classList.add('opacity-40', 'pointer-events-none');
+
+            btnModeUpload.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all bg-amber-500 text-zinc-950 shadow';
+            btnModeCamera.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-zinc-400 hover:text-zinc-200';
+
+            document.getElementById('liveIndicator').innerHTML = `<span class="w-2 h-2 rounded-full bg-sky-400"></span> MODE GALERI`;
+            document.getElementById('resolutionBadge').textContent = `${img.naturalWidth}x${img.naturalHeight}`;
+            showToast('Foto dimuat! Pilih filter & atur pencahayaan.', 'fa-image text-amber-400');
+          };
+          img.src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+        fileInput.value = '';
+      });
+
+      // Kontrol Kamera (Timer, Flip, Mirror, Shutter, Retake, Download)
+      document.getElementById('btnTimer').addEventListener('click', () => {
+        const cycle = [0, 3, 5];
+        const nextIdx = (cycle.indexOf(state.timerSeconds) + 1) % cycle.length;
+        state.timerSeconds = cycle[nextIdx];
+        document.getElementById('timerLabel').textContent = state.timerSeconds === 0 ? 'OFF' : `${state.timerSeconds}S`;
+        showToast(state.timerSeconds === 0 ? 'Timer dimatikan' : `Timer diatur ke ${state.timerSeconds} detik`, 'fa-stopwatch text-amber-400');
+      });
+
+      document.getElementById('btnFlipCamera').addEventListener('click', () => {
+        if (state.mode !== 'camera') {
+          showToast('Beralih ke mode kamera untuk mengganti lensa.', 'fa-camera text-amber-400');
+          return;
+        }
+        state.facingMode = state.facingMode === 'environment' ? 'user' : 'environment';
+        resetToLiveCamera();
+        startCamera();
+      });
+
+      document.getElementById('btnMirror').addEventListener('click', () => {
+        state.mirror = !state.mirror;
+        showToast(state.mirror ? 'Mode cermin aktif' : 'Mode cermin nonaktif', 'fa-left-right text-amber-400');
+      });
+
+      document.getElementById('btnShutter').addEventListener('click', handleShutterClick);
+      document.getElementById('btnRetake').addEventListener('click', resetToLiveCamera);
+      document.getElementById('btnDownload').addEventListener('click', downloadFinalPhoto);
+
+      // Sliders Penyesuaian Pencahayaan
+      const adjKeys = ['brightness', 'exposure', 'contrast', 'saturation', 'warmth', 'vignette', 'grain'];
+      adjKeys.forEach(key => {
+        const slider = document.getElementById(`adj-${key}`);
+        const label = document.getElementById(`val-${key}`);
+        slider.addEventListener('input', () => {
+          const val = parseInt(slider.value, 10);
+          state.adjustments[key] = val;
+          label.textContent = (key === 'vignette' || key === 'grain') ? `${val}%` : (val > 0 ? `+${val}` : val);
+        });
+      });
+
+      document.getElementById('btnResetAdjust').addEventListener('click', () => {
+        adjKeys.forEach(key => {
+          state.adjustments[key] = 0;
+          document.getElementById(`adj-${key}`).value = 0;
+          document.getElementById(`val-${key}`).textContent = (key === 'vignette' || key === 'grain') ? '0%' : '0';
+        });
+        showToast('Pengaturan pencahayaan direset ke awal.', 'fa-rotate-left text-amber-400');
+      });
+
+      // Kontrol Watermark & Bingkai Polaroid
+      document.getElementById('wmEnabled').addEventListener('change', (e) => {
+        state.watermark.enabled = e.target.checked;
+      });
+
+      document.getElementById('wmPreset').addEventListener('change', (e) => {
+        const val = e.target.value;
+        state.watermark.preset = val;
+        const input = document.getElementById('wmCustomText');
+        const presetMap = {
+          date98: "'98 11 20",
+          dateToday: new Date().toLocaleDateString('id-ID'),
+          autoDevice: state.activeFilter.deviceLabel,
+          kodak: 'SHOT ON KODAK GOLD 200',
+          nokiaN8: 'NOKIA N8 • CARL ZEISS 12MP',
+          iphone5s: 'Shot on iPhone 5s',
+          digicam: 'DIGICAM 2005 • CCD SENSOR',
+          handcam: 'REC ● 00:04:18 SP',
+          blackberry: 'BlackBerry Bold 9900'
+        };
+        if (presetMap[val]) {
+          input.value = presetMap[val];
+          state.watermark.customText = presetMap[val];
+        } else if (val === 'custom') {
+          input.focus();
+        }
+      });
+
+      document.getElementById('wmCustomText').addEventListener('input', (e) => {
+        state.watermark.customText = e.target.value;
+      });
+
+      document.getElementById('wmStyle').addEventListener('change', (e) => {
+        state.watermark.style = e.target.value;
+      });
+
+      document.getElementById('wmPosition').addEventListener('change', (e) => {
+        state.watermark.position = e.target.value;
+      });
+
+      document.getElementById('polaroidFrameToggle').addEventListener('change', (e) => {
+        state.watermark.forcePolaroid = e.target.checked;
+      });
+
+      document.getElementById('filmSprocketToggle').addEventListener('change', (e) => {
+        state.watermark.filmSprocket = e.target.checked;
+      });
+
+      // Tab Kategori Filter & Pencarian
+      document.querySelectorAll('.cat-pill').forEach(pill => {
+        pill.addEventListener('click', () => {
+          document.querySelectorAll('.cat-pill').forEach(p => {
+            p.className = 'cat-pill px-2.5 py-1 rounded-lg text-[11px] font-medium whitespace-nowrap bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800 transition';
+          });
+          pill.className = 'cat-pill active px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap bg-amber-500 text-zinc-950 transition';
+          state.activeCategory = pill.dataset.cat;
+          buildFilterGrid();
+        });
+      });
+
+      const searchInput = document.getElementById('filterSearchInput');
+      const btnClearSearch = document.getElementById('btnClearSearch');
+      searchInput.addEventListener('input', (e) => {
+        state.searchQuery = e.target.value;
+        btnClearSearch.classList.toggle('hidden', !state.searchQuery);
+        buildFilterGrid();
+      });
+
+      btnClearSearch.addEventListener('click', () => {
+        state.searchQuery = '';
+        searchInput.value = '';
+        btnClearSearch.classList.add('hidden');
+        buildFilterGrid();
+      });
+    }
+
+    // Boot Aplikasi
+    window.addEventListener('DOMContentLoaded', () => {
+      buildFilterGrid();
+      bindEvents();
+      startCamera();
+      requestAnimationFrame(animationLoop);
+    });
+  </script>
+</body>
+</html>
